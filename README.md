@@ -1,0 +1,61 @@
+# Siemens to SimpleRD
+Converts Siemens raw data file into SimpleRD format. 
+
+## 1. specifications
+```
+- acquisitionSystemInformation
+    - systemVendor
+    - systemModel
+    - systemFieldStrength_T
+    - receiverChannels
+    - institutionName
+- measurementInformation
+    - date
+    - measurementID
+    - protoclName
+    - acquisitionType
+- encoding
+    - trajectory
+    - encodedSpace
+        - matrixSize
+            - x
+            - y
+            - z
+        - fieldOfView_mm
+            - x
+            - y
+            - z
+    - reconSpace(spatial resolution)
+        - matrixSize
+            - x
+            - y
+            - z
+        - fieldOfView_mm
+            - x
+            - y
+            - z
+    - encodingLimits
+        - kspace_encoding_step_1
+            - min/max/center
+        - kspace_encoding_step_2
+            - min/max/center
+        - average
+        - slice
+        - contrast
+        - phase
+        - repetition
+        - set
+        - segment
+    - phaseResolution
+- parellelImaging
+    - accelerationFactor
+        - kspace_encoding_step_1
+        - kspace_encoding_step_2
+    - firstAcsLine
+    - nAcsLines
+- sequenceParameters
+    - TR
+    - TE
+    - TI
+    - TF                  
+```
