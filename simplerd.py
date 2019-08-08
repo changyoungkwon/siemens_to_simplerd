@@ -95,10 +95,10 @@ class ImageHeader(NamedTuple):
         }.get(meas['sKSpace']['ucTrajectory'][0], 'other')
         phaseResolution = meas['sKSpace']['dPhaseResolution']
 
-        if '0' in meas['sSliceArray']['asSlice'].keys():
-            sliceData = meas['sSliceArray']['asSlice']['0']
+        if 0 in meas['sSliceArray']['asSlice'].keys():
+            sliceData = meas['sSliceArray']['asSlice'][0]
         else:
-            sliceData = siemens_header['MeasYaps']['ascconv']['sSliceArray']['asSlice']['0']
+            sliceData = siemens_header['MeasYaps']['ascconv']['sSliceArray']['asSlice'][0]
         if trajectory == 'cartesian':
             encodedSpaceX = yaps['iNoOfFourierColumns']
         else:
@@ -159,7 +159,7 @@ class ImageHeader(NamedTuple):
             repetition = meas.get('lRepetitions', 1),
             segment = segment,
             set = yaps.get('iNSet', 1),
-            slice = meas.get('lSize', 1),
+            slice = meas['sSliceArray'].get('lSize', 1),
         )
         encoding = _Encoding(
             trajectory = trajectory,
@@ -203,34 +203,3 @@ class ImageHeader(NamedTuple):
     @property
     def shape(self):
         """return only shape of image(COL X CHA X LIN X SLC)""" 
-
-def isnamedtupleinstance(x):
-    _type = type(x)
-    bases = _type.__bases__
-    if len(bases) != 1 or bases[0] != tuple:
-        return False
-    fields = getattr(_type, '_fields', None)
-    if not isinstance(fields, tuple):
-        return False
-    return all(type(i)==str for i in fields)
-
-def unpack(obj):
-    if isinstance(obj, dict):
-        return {key: unpack(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [unpack(value) for value in obj]
-    elif isnamedtupleinstance(obj):
-        return {key: unpack(value) for key, value in obj._asdict().items()}
-    elif isinstance(obj, tuple):
-        return tuple(unpack(value) for value in obj)
-    else:
-        return obj
-
-if __name__ == '__main__':
-    import json
-    with open('MID00832_header.json', 'r') as header_file:
-        siemens_header = json.load(header_file)
-    simple_header = ImageHeader.convert(siemens_header)
-    header = simple_header._asdict()
-    with open('dum_header.json', 'w') as header_file:
-        json.dump(unpack(simple_header), header_file, indent=4)
