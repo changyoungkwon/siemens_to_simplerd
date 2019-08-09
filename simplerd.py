@@ -21,26 +21,26 @@ class Image:
         else:
             sliceData = siemens_header['MeasYaps']['ascconv']['sSliceArray']['asSlice'][0]
         if trajectory == 'cartesian':
-            encodedSpaceX = yaps['iNoOfFourierColumns']
+            encodedSpaceX = yaps['iNoOfFourierColumns'][0]
         else:
-            encodedSpaceX = iris['DERIVED']['imageColumns']
+            encodedSpaceX = iris['DERIVED']['imageColumns'][0]
 
         if meas['sKSpace'].get('uc2DInterpolation', -1) == 1:
-            encodedSpaceY = yaps['iPEFTLength'] / 2
+            encodedSpaceY = yaps['iPEFTLength'][0] / 2
         else:
-            encodedSpaceY = yaps['iPEFTLength']
+            encodedSpaceY = yaps['iPEFTLength'][0]
 
         if 'iNoOfFourierPartitions' not in yaps.keys() or yaps['i3DFTLength'] == 1:
             encodedSpaceZ = 1
         else:
-            encodedSpaceZ = yaps['i3DFTLength']
+            encodedSpaceZ = yaps['i3DFTLength'][0]
 
         # encoding-dimension
         if 'ucSegmentationMode' in meas['sFastImaging'].keys():
-            segments_candidate = yaps['iNoOfFourierPartitions'] * yaps['iNoOfFourierLines'] / meas['sFastImaging']['lSegements'] if meas['sFastImaging'].get('lSegments')[0] > 1 else 1
+            segments_candidate = yaps['iNoOfFourierPartitions'][0] * yaps['iNoOfFourierLines'][0] / meas['sFastImaging']['lSegments'][0] if meas['sFastImaging'].get('lSegments')[0] > 1 else 1
             segment = {
                 1: segments_candidate,
-                2: meas['sFastImaging'].get('lShots', 1),
+                2: meas['sFastImaging'].get('lShots', [1])[0],
             }.get(meas['sFastImaging']['ucSegmentationMode'][0], 1)
         else:
             segment = 1
@@ -48,17 +48,17 @@ class Image:
 
         self.header = {
             "acquisition_system": {
-                "institution_name"      : dicom['InstitutionName'],
-                "receiver_channels"     : yaps['iMaxNoOfRxChannels'],
-                "system_field_strength" : yaps['flMagneticFieldStrength'],
-                "system_vendor"         : dicom['Manufacturer'],
-                "system_model"          : dicom['ManufacturersModelName'],
+                "institution_name"      : dicom['InstitutionName'][0],
+                "receiver_channels"     : yaps['iMaxNoOfRxChannels'][0],
+                "system_field_strength" : yaps['flMagneticFieldStrength'][0],
+                "system_vendor"         : dicom['Manufacturer'][0],
+                "system_model"          : dicom['ManufacturersModelName'][0],
             },
             "measurement": {
                 "scan_date"         : yaps['tFrameOfReference'][0].split('.')[10][:8],
-                "acquisition_type"  : dicom['tMRAcquisitionType'],
-                "measurement_uid"   : header['MeasUID'],
-                "protocol_name"     : meas['tProtocolName'],
+                "acquisition_type"  : dicom['tMRAcquisitionType'][0],
+                "measurement_uid"   : header['MeasUID'][0],
+                "protocol_name"     : meas['tProtocolName'][0],
             },
             "encoding": {
                 "trajectory": trajectory,
@@ -72,9 +72,9 @@ class Image:
                 },
                 "recon_space": {
                     "matrix_size": (
-                        iris['DERIVED']['ImageColumns'],
-                        iris['DERIVED']['ImageLines'],
-                        1 if yaps['i3DFTLength'] == 1 else meas['sKSpace']['lImagesPerSlab'],
+                        iris['DERIVED']['ImageColumns'][0],
+                        iris['DERIVED']['ImageLines'][0],
+                        1 if yaps['i3DFTLength'][0] == 1 else meas['sKSpace']['lImagesPerSlab'][0],
                     ),
                     "field_of_view": (
                         sliceData['dReadoutFOV'],
@@ -83,30 +83,36 @@ class Image:
                     ),
                 },
                 "dimensions": {
-                    "kspace_encoding_step1": yaps['iNoOfFourierLines'],
-                    "kspace_encoding_step2": yaps.get('iNoOfFourierPartitions', 1) if yaps['i3DFTLength'] != 1 else 1,
-                    "average"              : meas.get('lAverages', 1),
-                    "contrast"             : meas.get('lContrasts', 1),
-                    "phase"                : meas['sPhysioImaging'].get('lPhases', 1),
-                    "repetition"           : meas.get('lRepetitions', 1),
+                    "kspace_encoding_step1": 1 if len(yaps['iNoOfFourierLines']) == 0 else yaps['iNoOfFourierLines'][0],
+                    "kspace_encoding_step2": 1 if yaps['i3DFTLength'][0] != 1 and len(yaps['iNoOfFourierPartitions']) == 0 else yaps['iNoOfFourierPartitions'][0],
+                    "average"              : meas['lAverages'][0],
+                    "contrast"             : meas['lContrasts'][0],
+                    "phase"                : meas['sPhysioImaging']['lPhases'][0],
+                    "repetition"           : 1 if len(meas['lRepetitions']) == 0 else meas['lRepetitions'][0],
                     "segment"              : segment,
-                    "set"                  : yaps.get('iNSet', 1),
-                    "slice"                : meas['sSliceArray'].get('lSize', 1),
+                    "set"                  : yaps['iNSet'][0],
+                    "slice"                : meas['sSliceArray']['lSize'][0],
                 },
-                "phase_resolution": meas['sKSpace']['dPhaseResolution']
+                "phase_resolution": meas['sKSpace']['dPhaseResolution'][0],
             },
             "parallel_imaging": {
                 "acceleration_factor": {
-                    "kspace_encoding_step_1": meas.get('sPat', {}).get('lAccelFactPE', 1),
-                    "kspace_encoding_step_2": meas.get('sPat', {}).get('lAccelFact3D', 1),
+                    "kspace_encoding_step_1": 1 if len(meas['sPat']['lAccelFactPE']) == 0 else meas['sPat']['lAccelFactPE'][0],
+                    "kspace_encoding_step_2": 1 if len(meas['sPat']['lAccelFact3D']) == 0 else meas['sPat']['lAccelFact3D'][0],
                 },
-                "first_acs_line": yaps.get('lFirstRefLine', -1),
-                "n_acs_lines"   : meas.get('sPat', {}).get('lRefLinesPE', 0),
+                "first_acs_line": {
+                    "kspace_encoding_step_1": yaps['lFirstRefLine'][0],
+                    "kspace_encoding_step_2": yaps['lFirstRefPartition'][0],
+                },
+                "n_acs_lines"   : {
+                    "kspace_encoding_step_1": 0 if len(meas['sPat']['lRefLinesPE']) == 0 else meas['sPat']['lRefLinesPE'][0],
+                    "kspace_encoding_step_2": 0 if len(meas['sPat']['lRefLines3D']) == 0 else meas['sPat']['lRefLines3D'][0],
+                }, 
             },
             "sequence_parameters": {
-                "turbo_factor"     : meas.get('sFastImaging', {}).get('lSliceTurboFactor', 1),
-                "TE"               : [ te / 1000.0 for te in meas['alTE'] if te > 0 ],
-                "TR"               : [ tr / 1000.0 for tr in meas['alTR'] if tr > 0 ],
+                "turbo_factor"     : meas['sFastImaging']['lSliceTurboFactor'][0],
+                "TR"               : [ tr / 1000.0 for i, tr in enumerate(meas['alTR']) if i == 0 or tr > 0 ],
+                "TE"               : [ te / 1000.0 for i, te in enumerate(meas['alTE']) if i == 0 or (te > 0 and i > 0 and i < meas['lContrasts'][0])],
                 "TI"               : [ ti / 1000.0 for ti in meas['alTI'] if ti > 0 ],
                 "flip_angle_degree": [ angle for angle in dicom['adFlipAngleDegree'] if angle > 0 ],
             },
