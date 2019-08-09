@@ -1,4 +1,4 @@
-from simplerd import ImageHeader
+from simplerd import ImageHeader, Image
 from twixreader import twixreader
 
 def isnamedtupleinstance(x):
@@ -28,7 +28,7 @@ def main():
     import json
     files = Path('/mnt/file-server/PI_data/SNUH_backup').glob('???/**/*.dat')
     for i, filepath in enumerate(files):
-        header_filename = 'test/{}_header.json'.format(str(filepath).split('/')[-1][:-4])
+        header_filename = 'test/{}_header_dict.json'.format(str(filepath).split('/')[-1][:-4])
         try:
             twix = twixreader.read_twix(str(filepath))
             meas = twix.read_measurement(header_only=True)
@@ -36,12 +36,14 @@ def main():
             if type(meas) is list:
                 meas = meas[-1]
             print(meas)
-            header = ImageHeader.convert(meas.hdr)
+            image = Image(meas.hdr, 0)
             with open(header_filename, 'w') as header_file:
-                json.dump(unpack(header), header_file, indent=4)
+                json.dump(image.header, header_file, indent=4)
         except Exception as ex:
             print('[error]file : {}\n message : {}\n'.format(str(filepath), ex))
             pass
+        if i > 3:
+            break
 
 if __name__ == '__main__':
     main()

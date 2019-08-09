@@ -1,92 +1,13 @@
-from typing import NamedTuple, Tuple
-
-class _Space(NamedTuple):
-    matrixSize: Tuple[int, int, int]
-    fieldOfView: Tuple[float, float, float]
-
-class _Dimension(NamedTuple):
-    kspaceEncodingStep1: int
-    kspaceEncodingStep2: int
-    average: int
-    slice: int
-    contrast: int
-    phase: int
-    repetition: int
-    set: int
-    segment: int
-
-class _AcquisitionSystem(NamedTuple):
-    systemVendor: str
-    systemModel: str
-    systemFieldStrength: float
-    receiverChannels: int
-    institutionName: str
-
-class _Measurement(NamedTuple):
-    date: str
-    measurementUid: str
-    protocolName: str
-    acquisitionType: str
-
-class _Encoding(NamedTuple):
-    trajectory: str
-    encodedSpace: _Space
-    reconSpace: _Space
-    dimension: _Dimension 
-    phaseResolution: float
-
-class _AccelerationFactor(NamedTuple):
-    kspaceEncodingStep1: int
-    kspaceEncodingStep2: int
-
-class _ParallelImaging(NamedTuple):
-    accelerationFactor: _AccelerationFactor
-    firstAcsLine: int
-    nAcsLines: int
-
-class _SequenceParameters(NamedTuple):
-    TR: float
-    TE: float
-    TI: float
-    flipAngleDegree: float
-    turboFactor: int
-
-
-class ImageHeader(NamedTuple):
-    acquisitionSystem: _AcquisitionSystem
-    measurement: _Measurement
-    encoding: _Encoding
-    parallelImaging: _ParallelImaging
-    sequenceParameters: _SequenceParameters
-
-    @classmethod
-    def convert(cls, siemens_header):
+class Image:
+    def __init__(self, siemens_header, buffer):
         dicom = siemens_header['Dicom']['xprot']['']['DICOM']
         yaps = siemens_header['Meas']['xprot']['']['YAPS']
         meas = siemens_header['Meas']['xprot']['']['MEAS']
         header = siemens_header['Meas']['xprot']['']['HEADER']
         iris = siemens_header['Meas']['xprot']['']['IRIS']
 
-        # acquisitionSystem
-        acquisitionSystem = _AcquisitionSystem(
-            institutionName = dicom['InstitutionName'],
-            receiverChannels = yaps['iMaxNoOfRxChannels'],
-            systemFieldStrength = yaps['flMagneticFieldStrength'],
-            systemVendor = dicom['Manufacturer'],
-            systemModel = dicom['ManufacturersModelName'],
-        )
-
-        # measurement
-        measurement = _Measurement(
-            date = yaps['tFrameOfReference'][0].split('.')[10][:8],
-            acquisitionType = dicom['tMRAcquisitionType'],
-            measurementUid = header['MeasUID'],
-            protocolName = meas['tProtocolName'],
-        )
-
         #encoding
         phaseOverSampling = iris['DERIVED'].get('phaseOverSampling', 0)
-
         trajectory = {
             1: 'cartesian',
             2: 'radial',
@@ -114,32 +35,6 @@ class ImageHeader(NamedTuple):
         else:
             encodedSpaceZ = yaps['i3DFTLength']
 
-        encodedSpace = _Space(
-            matrixSize = (
-                encodedSpaceX,
-                encodedSpaceY,
-                encodedSpaceZ,
-            ),
-            fieldOfView = (
-                sliceData['dReadoutFOV'] * yaps['flReadoutOSFactor'][0],
-                sliceData['dReadoutFOV'] * (1 + phaseOverSampling),
-                sliceData['dThickness'] * (1 + phaseOverSampling)
-            ),
-        )
-
-
-        reconSpace = _Space(
-            matrixSize = (
-                iris['DERIVED']['ImageColumns'],
-                iris['DERIVED']['ImageLines'],
-                1 if yaps['i3DFTLength'] == 1 else meas['sKSpace']['lImagesPerSlab'],
-            ),
-            fieldOfView = (
-                sliceData['dReadoutFOV'],
-                sliceData['dReadoutFOV'],
-                sliceData['dThickness'],
-            )
-        )
         # encoding-dimension
         if 'ucSegmentationMode' in meas['sFastImaging'].keys():
             segments_candidate = yaps['iNoOfFourierPartitions'] * yaps['iNoOfFourierLines'] / meas['sFastImaging']['lSegements'] if meas['sFastImaging'].get('lSegments')[0] > 1 else 1
@@ -150,56 +45,71 @@ class ImageHeader(NamedTuple):
         else:
             segment = 1
 
-        dimension = _Dimension(
-            kspaceEncodingStep1 = yaps['iNoOfFourierLines'],
-            kspaceEncodingStep2 = yaps.get('iNoOfFourierPartitions', 1) if yaps['i3DFTLength'] != 1 else 1,
-            average = meas.get('lAverages', 1),
-            contrast = meas.get('lContrasts', 1),
-            phase = meas['sPhysioImaging'].get('lPhases', 1),
-            repetition = meas.get('lRepetitions', 1),
-            segment = segment,
-            set = yaps.get('iNSet', 1),
-            slice = meas['sSliceArray'].get('lSize', 1),
-        )
-        encoding = _Encoding(
-            trajectory = trajectory,
-            encodedSpace = encodedSpace,
-            reconSpace = reconSpace,
-            dimension = dimension,
-            phaseResolution = phaseResolution,
-        )
 
-        # parallelImaging
-        parallelImaging = _ParallelImaging(
-            accelerationFactor = _AccelerationFactor(
-                meas.get('sPat', {}).get('lAccelFactPE', 1),
-                meas.get('sPat', {}).get('lAccelFact3D', 1),
-            ),
-            firstAcsLine = yaps.get('lFirstRefLine', -1),
-            nAcsLines = meas.get('sPat', {}).get('lRefLinesPE', 0),
-        )
+        self.header = {
+            "acquisition_system": {
+                "institution_name"      : dicom['InstitutionName'],
+                "receiver_channels"     : yaps['iMaxNoOfRxChannels'],
+                "system_field_strength" : yaps['flMagneticFieldStrength'],
+                "system_vendor"         : dicom['Manufacturer'],
+                "system_model"          : dicom['ManufacturersModelName'],
+            },
+            "measurement": {
+                "scan_date"         : yaps['tFrameOfReference'][0].split('.')[10][:8],
+                "acquisition_type"  : dicom['tMRAcquisitionType'],
+                "measurement_uid"   : header['MeasUID'],
+                "protocol_name"     : meas['tProtocolName'],
+            },
+            "encoding": {
+                "trajectory": trajectory,
+                "encoded_space": {
+                    "matrix_size": (encodedSpaceX, encodedSpaceY, encodedSpaceZ),
+                    "field_of_view": (
+                        sliceData['dReadoutFOV'] * yaps['flReadoutOSFactor'][0],
+                        sliceData['dPhaseFOV'] * (1 + phaseOverSampling),
+                        sliceData['dThickness'] * (1 + phaseOverSampling),
+                    ),
+                },
+                "recon_space": {
+                    "matrix_size": (
+                        iris['DERIVED']['ImageColumns'],
+                        iris['DERIVED']['ImageLines'],
+                        1 if yaps['i3DFTLength'] == 1 else meas['sKSpace']['lImagesPerSlab'],
+                    ),
+                    "field_of_view": (
+                        sliceData['dReadoutFOV'],
+                        sliceData['dPhaseFOV'],
+                        sliceData['dThickness'],
+                    ),
+                },
+                "dimensions": {
+                    "kspace_encoding_step1": yaps['iNoOfFourierLines'],
+                    "kspace_encoding_step2": yaps.get('iNoOfFourierPartitions', 1) if yaps['i3DFTLength'] != 1 else 1,
+                    "average"              : meas.get('lAverages', 1),
+                    "contrast"             : meas.get('lContrasts', 1),
+                    "phase"                : meas['sPhysioImaging'].get('lPhases', 1),
+                    "repetition"           : meas.get('lRepetitions', 1),
+                    "segment"              : segment,
+                    "set"                  : yaps.get('iNSet', 1),
+                    "slice"                : meas['sSliceArray'].get('lSize', 1),
+                },
+                "phase_resolution": meas['sKSpace']['dPhaseResolution']
+            },
+            "parallel_imaging": {
+                "acceleration_factor": {
+                    "kspace_encoding_step_1": meas.get('sPat', {}).get('lAccelFactPE', 1),
+                    "kspace_encoding_step_2": meas.get('sPat', {}).get('lAccelFact3D', 1),
+                },
+                "first_acs_line": yaps.get('lFirstRefLine', -1),
+                "n_acs_lines"   : meas.get('sPat', {}).get('lRefLinesPE', 0),
+            },
+            "sequence_parameters": {
+                "turbo_factor"     : meas.get('sFastImaging', {}).get('lSliceTurboFactor', 1),
+                "TE"               : [ te / 1000.0 for te in meas['alTE'] if te > 0 ],
+                "TR"               : [ tr / 1000.0 for tr in meas['alTR'] if tr > 0 ],
+                "TI"               : [ ti / 1000.0 for ti in meas['alTI'] if ti > 0 ],
+                "flip_angle_degree": [ angle for angle in dicom['adFlipAngleDegree'] if angle > 0 ],
+            },
+        }
 
-        # sequenceParameters
-        sequenceParameters = _SequenceParameters(
-            turboFactor = meas.get('sFastImaging', {}).get('lSliceTurboFactor', 1),
-            TE = [ te / 1000.0 for te in meas['alTE'] if te > 0 ],
-            TR = [ tr / 1000.0 for tr in meas['alTR'] if tr > 0 ],
-            TI = [ ti / 1000.0 for ti in meas['alTI'] if ti > 0 ],
-            flipAngleDegree = [ angle for angle in dicom['adFlipAngleDegree'] if angle > 0 ],
-        )
-
-        return cls( 
-            acquisitionSystem=acquisitionSystem, 
-            measurement=measurement, 
-            encoding=encoding, 
-            parallelImaging=parallelImaging, 
-            sequenceParameters=sequenceParameters 
-        )
-
-    @property
-    def dimension(self):
-        """return full dimension(COL X CHA X LIN X ...)"""
-
-    @property
-    def shape(self):
-        """return only shape of image(COL X CHA X LIN X SLC)""" 
+        self.buffer = buffer
