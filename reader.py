@@ -40,24 +40,30 @@ def flatten_dict(obj, delim):
 def main():
     from pathlib import Path
     import json
-    files = Path('/mnt/file-server/PI_data/SNUH_backup').glob('???/**/*.dat')
+    from contextlib import redirect_stdout
+    files = Path('/mnt/file-server/PI_data/SNUH_backup').glob('**/*.dat')
+    files = list(files)
+    print("[status]total number of files : {}".format(len(files)))
+    dummy_text_file = open('dummy.txt', 'w')
     for i, filepath in enumerate(files):
-        header_filename = 'test/{}_header_dict.json'.format(str(filepath).split('/')[-1][:-4])
+        header_filename = 'test/{}_header.json'.format(str(filepath).split('/')[-1][:-4])
         try:
-            twix = twixreader.read_twix(str(filepath))
-            meas = twix.read_measurement(header_only=True)
-            print(meas)
-            if type(meas) is list:
-                meas = meas[-1]
-            print(meas)
-            image = Image(meas.hdr, 0)
-            with open(header_filename, 'w') as header_file:
-                json.dump(image.header, header_file, indent=4)
+            with redirect_stdout(dummy_text_file):
+                twix = twixreader.read_twix(str(filepath))
+                measurements = twix.read_measurement(header_only=True)
+            if not isinstance(measurements, list):
+                measurements = [measurements]
+            for meas in measurements:
+                image = Image(meas.hdr, 0)
+                image.header['filename'] = str(filepath)
+                with open(header_filename, 'w') as header_file:
+                    json.dump(image.header, header_file, indent=4)
+            print("[status]{}/{} completed. work in progress".format(i, len(files)))
         except Exception as ex:
             print('[error]file : {}\n message : {}\n'.format(str(filepath), ex))
             pass
-        if i > 3:
-            break
+    dummy_text_file.close()
+
 
 def json_to_csv():
     """Merge json files in the test folder into a single csv file"""
@@ -76,9 +82,8 @@ def json_to_csv():
             if i == 0:
                 keys_in_order = flatten_data.keys()
                 writer.writerow(keys_in_order)
-            writer.writerow(flatten_data.values())
-            #values = [flatten_data[key] for key in keys_in_order]
-            #writer.writerow(values)
+            values = [flatten_data[key] for key in keys_in_order]
+            writer.writerow(values)
 
 def debug():
     from pathlib import Path
@@ -100,5 +105,5 @@ def debug():
 
 if __name__ == '__main__':
     main()
-    # json_to_csv()
+    json_to_csv()
     # debug()
