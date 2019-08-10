@@ -23,7 +23,7 @@ class Image:
         if trajectory == 'cartesian':
             encodedSpaceX = yaps['iNoOfFourierColumns'][0]
         else:
-            encodedSpaceX = iris['DERIVED']['imageColumns'][0]
+            encodedSpaceX = iris['DERIVED']['ImageColumns'][0]
 
         if meas['sKSpace'].get('uc2DInterpolation', -1) == 1:
             encodedSpaceY = yaps['iPEFTLength'][0] / 2
@@ -97,16 +97,16 @@ class Image:
             },
             "parallel_imaging": {
                 "acceleration_factor": {
-                    "kspace_encoding_step_1": 1 if len(meas['sPat']['lAccelFactPE']) == 0 else meas['sPat']['lAccelFactPE'][0],
-                    "kspace_encoding_step_2": 1 if len(meas['sPat']['lAccelFact3D']) == 0 else meas['sPat']['lAccelFact3D'][0],
+                    "kspace_encoding_step1": 1 if len(meas['sPat']['lAccelFactPE']) == 0 else meas['sPat']['lAccelFactPE'][0],
+                    "kspace_encoding_step2": 1 if len(meas['sPat']['lAccelFact3D']) == 0 else meas['sPat']['lAccelFact3D'][0],
                 },
                 "first_acs_line": {
-                    "kspace_encoding_step_1": yaps['lFirstRefLine'][0],
-                    "kspace_encoding_step_2": yaps['lFirstRefPartition'][0],
+                    "kspace_encoding_step1": yaps['lFirstRefLine'][0],
+                    "kspace_encoding_step2": yaps['lFirstRefPartition'][0],
                 },
                 "n_acs_lines"   : {
-                    "kspace_encoding_step_1": 0 if len(meas['sPat']['lRefLinesPE']) == 0 else meas['sPat']['lRefLinesPE'][0],
-                    "kspace_encoding_step_2": 0 if len(meas['sPat']['lRefLines3D']) == 0 else meas['sPat']['lRefLines3D'][0],
+                    "kspace_encoding_step1": 0 if len(meas['sPat']['lRefLinesPE']) == 0 else meas['sPat']['lRefLinesPE'][0],
+                    "kspace_encoding_step2": 0 if len(meas['sPat']['lRefLines3D']) == 0 else meas['sPat']['lRefLines3D'][0],
                 }, 
             },
             "sequence_parameters": {

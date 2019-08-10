@@ -9,6 +9,7 @@ autopep8 = "*"
 [packages]
 twixreader = {path = "./twixreader"}
 numpy = "*"
+h5py = "*"
 
 [requires]
 python_version = "3.6"
