@@ -110,7 +110,7 @@ class Image:
                 }, 
             },
             "sequence_parameters": {
-                "turbo_factor"     : meas['sFastImaging']['lSliceTurboFactor'][0],
+                "turbo_factor"     : meas['sFastImaging']['lTurboFactor'][0],
                 "TR"               : [ tr / 1000.0 for i, tr in enumerate(meas['alTR']) if i == 0 or tr > 0 ],
                 "TE"               : [ te / 1000.0 for i, te in enumerate(meas['alTE']) if i == 0 or (te > 0 and 0 < i < meas['lContrasts'][0])],
                 "TI"               : [ ti / 1000.0 for ti in meas['alTI'] if ti > 0 ],

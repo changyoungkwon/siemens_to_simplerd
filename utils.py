@@ -108,56 +108,6 @@ def save_all(filename):
     print("mesurement {} done".format(meas.mid))
 
 
-def compare_dimension(dat_filenames):
-    """print (1)dimensions (2)expected dimension (3)buffer size"""
-    print("[status]total number of files : {}".format(len(dat_filenames)))
-    for i, dat_filename in enumerate(dat_filenames):
-        header_filename = 'test2/{}_header.json'.format(dat_filename.split('/')[-1][:-4])
-        try:
-            # with redirect_stdout(dummy_text_file):
-            twix = twixreader.read_twix(str(filepath))
-            measurements = twix.read_measurement()
-            if not isinstance(measurements, list):
-                measurements = [measurements]
-            for meas in measurements:
-                image = Image(meas.hdr, meas.get_meas_buffer(0))
-                image.header['filename'] = str(filepath)
-                image.header['shape'] = tuple([int(i) for i in tuple(image.buffer.shape)])
-                print(image.header['shape'])
-                with open(header_filename, 'w') as header_file:
-                    json.dump(image.header, header_file, indent=4)
-            print("[status]{}/{} completed. work in progress".format(i, len(files)))
-        except Exception as ex:
-            print('[error]file : {}\n message : {}\n'.format(str(filepath), ex))
-            pass
-    # dummy_text_file.close()
-"""
-def main():
-    files = Path('/mnt/file-server/PI_data/SNUH_backup').glob('**/*.dat')
-    files = list(files)
-    print("[status]total number of files : {}".format(len(files)))
-    dummy_text_file = open('dummy.txt', 'w')
-    for i, filepath in enumerate(files):
-        header_filename = 'test/{}_header.json'.format(str(filepath).split('/')[-1][:-4])
-        try:
-            with redirect_stdout(dummy_text_file):
-                twix = twixreader.read_twix(str(filepath))
-                measurements = twix.read_measurement(header_only=True)
-            if not isinstance(measurements, list):
-                measurements = [measurements]
-            for meas in measurements:
-                image = Image(meas.hdr, 0)
-                image.header['filename'] = str(filepath)
-                with open(header_filename, 'w') as header_file:
-                    json.dump(image.header, header_file, indent=4)
-            print("[status]{}/{} completed. work in progress".format(i, len(files)))
-        except Exception as ex:
-            print('[error]file : {}\n message : {}\n'.format(str(filepath), ex))
-            pass
-    dummy_text_file.close()
-
-"""
-
 def json_to_csv(dirname):
     """Merge json files in the test folder into a single csv file"""
     # first read fieldnames
@@ -178,22 +128,6 @@ def json_to_csv(dirname):
                 data = json.load(json_file)
             flatten_data = _flatten_dict(data, '/')
             writer.writerow(flatten_data)
-"""
-def debug():
-    from pathlib import Path
-    import json
-    for filename in error_filenames:
-        header_filename = 'test/{}_header_dict.json'.format(filename.split('/')[-1][:-4])
-        twix = twixreader.read_twix(filename)
-        meas = twix.read_measurement(header_only=True)
-        if type(meas) is list:
-            meas = meas[-1]
-        meas.hdr.dump()
-        image = Image(meas.hdr, 0)
-        with open(header_filename, 'w') as header_file:
-            json.dump(image.header, header_file, indent=4)
-
-"""
 
 def get_image(filename):
     twix = twixreader.read_twix(filename)
